@@ -1,0 +1,145 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Tienda Virtual - Productos</title>
+    <script>
+        const URL_PRODUCTOS = "https://ms-productos-production.up.railway.app";
+
+        async function listar() {
+            console.log("Listando productos...");
+            try {
+                const response = await fetch(URL_PRODUCTOS + "/productos/listar");
+                if (!response.ok) throw new Error("Error HTTP: " + response.status);
+                const data = await response.json();
+                console.log("Productos recibidos:", data);
+                const tabla = document.getElementById("tablaProductos");
+                tabla.innerHTML = "";
+                if (!Array.isArray(data)) {
+                    console.error("La respuesta no es un array:", data);
+                    return;
+                }
+                for (let i = 0; i < data.length; i++) {
+                    const p = data[i];
+                    tabla.innerHTML += "<tr>" +
+                        "<td>" + (p.codigoProducto ?? "") + "</td>" +
+                        "<td>" + (p.nombreProducto ?? "") + "</td>" +
+                        "<td>" + (p.nitProveedor ?? "") + "</td>" +
+                        "<td>" + (p.precioCompra ?? "") + "</td>" +
+                        "<td>" + (p.ivaCompra ?? "") + "</td>" +
+                        "<td>" + (p.precioVenta ?? "") + "</td>" +
+                        "</tr>";
+                }
+            } catch (error) {
+                console.error("Error al listar:", error);
+            }
+        }
+
+        async function guardar() {
+            const producto = {
+                codigoProducto: document.getElementById("codigo").value,
+                nombreProducto: document.getElementById("nombreProducto").value,
+                nitProveedor: document.getElementById("nit").value,
+                precioCompra: document.getElementById("precioCompra").value,
+                ivaCompra: document.getElementById("ivaCompra").value,
+                precioVenta: document.getElementById("precioVenta").value
+            };
+            try {
+                const response = await fetch(URL_PRODUCTOS + "/productos/guardar", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(producto)
+                });
+                if (!response.ok) throw new Error("Error al guardar: " + response.status);
+                alert("Producto guardado correctamente");
+                listar();
+            } catch (error) {
+                console.error("Error al guardar:", error);
+                alert("Error al guardar producto");
+            }
+        }
+
+        async function eliminar() {
+            const id = document.getElementById("idEliminar").value;
+            if (!id) { alert("Ingrese el ID"); return; }
+            try {
+                const response = await fetch(URL_PRODUCTOS + "/productos/eliminar/" + id, {
+                    method: "DELETE"
+                });
+                if (!response.ok) throw new Error("Error al eliminar");
+                alert("Producto eliminado correctamente");
+                listar();
+            } catch (error) {
+                console.error("Error al eliminar:", error);
+                alert("Error al eliminar producto");
+            }
+        }
+
+        window.onload = listar;
+    </script>
+</head>
+<body>
+    <h2>Tienda Virtual</h2>
+    <nav>
+        <a href="index.jsp">Inicio</a> |
+        <a href="usuarios.jsp">Usuarios</a> |
+        <a href="clientes.jsp">Clientes</a> |
+        <a href="proveedores.jsp">Proveedores</a> |
+        <a href="productos.jsp">Productos</a> |
+        <a href="ventas.jsp">Ventas</a> |
+        <a href="reportes.jsp">Reportes</a>
+    </nav>
+    <hr/>
+    <h3>Gestión de Productos</h3>
+    <table border="1">
+        <tr>
+            <td>Código:</td>
+            <td><input type="text" id="codigo"/></td>
+            <td>NIT Proveedor:</td>
+            <td><input type="text" id="nit"/></td>
+        </tr>
+        <tr>
+            <td>Nombre Producto:</td>
+            <td><input type="text" id="nombreProducto"/></td>
+            <td>IVA Compra:</td>
+            <td><input type="text" id="ivaCompra"/></td>
+        </tr>
+        <tr>
+            <td>Precio Compra:</td>
+            <td><input type="text" id="precioCompra"/></td>
+            <td>Precio Venta:</td>
+            <td><input type="text" id="precioVenta"/></td>
+        </tr>
+        <tr>
+            <td colspan="4">
+                <input type="button" value="Guardar" onclick="guardar()"/>
+            </td>
+        </tr>
+    </table>
+    <hr/>
+    <h3>Eliminar Producto</h3>
+    <table>
+        <tr>
+            <td>ID MongoDB:</td>
+            <td><input type="text" id="idEliminar"/></td>
+            <td><input type="button" value="Eliminar" onclick="eliminar()"/></td>
+        </tr>
+    </table>
+    <hr/>
+    <h3>Listado de Productos</h3>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>NIT Proveedor</th>
+                <th>Precio Compra</th>
+                <th>IVA Compra</th>
+                <th>Precio Venta</th>
+            </tr>
+        </thead>
+        <tbody id="tablaProductos"></tbody>
+    </table>
+</body>
+</html>

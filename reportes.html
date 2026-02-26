@@ -1,0 +1,105 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Tienda Virtual - Reportes</title>
+    <script>
+        const URL_USUARIOS = "https://ms-usuarios-production-3f9e.up.railway.app";
+        const URL_CLIENTES = "https://ms-clientes-production.up.railway.app";
+        const URL_VENTAS = "https://ms-ventas-production-0b54.up.railway.app";
+
+        async function listarUsuarios() {
+            console.log("Listando usuarios...");
+            try {
+                const response = await fetch(URL_USUARIOS + "/usuarios/listar");
+                if (!response.ok) throw new Error("Error HTTP: " + response.status);
+                const data = await response.json();
+                const tabla = document.getElementById("tablaReporte");
+                tabla.innerHTML = "<tr><th>Cédula</th><th>Nombre</th><th>Email</th><th>Usuario</th></tr>";
+                for (let i = 0; i < data.length; i++) {
+                    const u = data[i];
+                    tabla.innerHTML += "<tr>" +
+                        "<td>" + (u.cedulaUsuario ?? "") + "</td>" +
+                        "<td>" + (u.nombreUsuario ?? "") + "</td>" +
+                        "<td>" + (u.emailUsuario ?? "") + "</td>" +
+                        "<td>" + (u.usuario ?? "") + "</td>" +
+                        "</tr>";
+                }
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        }
+
+        async function listarClientes() {
+            console.log("Listando clientes...");
+            try {
+                const response = await fetch(URL_CLIENTES + "/clientes/listar");
+                if (!response.ok) throw new Error("Error HTTP: " + response.status);
+                const data = await response.json();
+                const tabla = document.getElementById("tablaReporte");
+                tabla.innerHTML = "<tr><th>Cédula</th><th>Nombre</th><th>Dirección</th><th>Teléfono</th><th>Email</th></tr>";
+                for (let i = 0; i < data.length; i++) {
+                    const c = data[i];
+                    tabla.innerHTML += "<tr>" +
+                        "<td>" + (c.cedulaCliente ?? "") + "</td>" +
+                        "<td>" + (c.nombreCliente ?? "") + "</td>" +
+                        "<td>" + (c.direccionCliente ?? "") + "</td>" +
+                        "<td>" + (c.telefonoCliente ?? "") + "</td>" +
+                        "<td>" + (c.emailCliente ?? "") + "</td>" +
+                        "</tr>";
+                }
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        }
+
+        async function listarVentas() {
+            console.log("Listando ventas...");
+            try {
+                const response = await fetch(URL_VENTAS + "/ventas/listar");
+                if (!response.ok) throw new Error("Error HTTP: " + response.status);
+                const data = await response.json();
+                const tabla = document.getElementById("tablaReporte");
+                tabla.innerHTML = "<tr><th>Código</th><th>Cédula Cliente</th><th>Cédula Usuario</th><th>Valor</th><th>IVA</th><th>Total</th></tr>";
+                for (let i = 0; i < data.length; i++) {
+                    const v = data[i];
+                    tabla.innerHTML += "<tr>" +
+                        "<td>" + (v.codigoVenta ?? "") + "</td>" +
+                        "<td>" + (v.cedulaCliente ?? "") + "</td>" +
+                        "<td>" + (v.cedulaUsuario ?? "") + "</td>" +
+                        "<td>" + (v.valorVenta ?? "") + "</td>" +
+                        "<td>" + (v.ivaVenta ?? "") + "</td>" +
+                        "<td>" + (v.totalVenta ?? "") + "</td>" +
+                        "</tr>";
+                }
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        }
+    </script>
+</head>
+<body>
+    <h2>Tienda Virtual</h2>
+    <nav>
+        <a href="index.jsp">Inicio</a> |
+        <a href="usuarios.jsp">Usuarios</a> |
+        <a href="clientes.jsp">Clientes</a> |
+        <a href="proveedores.jsp">Proveedores</a> |
+        <a href="productos.jsp">Productos</a> |
+        <a href="ventas.jsp">Ventas</a> |
+        <a href="reportes.jsp">Reportes</a>
+    </nav>
+    <hr/>
+    <h3>Reportes</h3>
+    <table>
+        <tr>
+            <td><input type="button" value="Listado de Usuarios" onclick="listarUsuarios()"/></td>
+            <td><input type="button" value="Listado de Clientes" onclick="listarClientes()"/></td>
+            <td><input type="button" value="Ventas por Cliente" onclick="listarVentas()"/></td>
+        </tr>
+    </table>
+    <hr/>
+    <table border="1" id="tablaReporte"></table>
+</body>
+</html>

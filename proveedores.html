@@ -1,0 +1,136 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Tienda Virtual - Proveedores</title>
+    <script>
+        const URL_PROVEEDORES = "https://ms-proveedores-production.up.railway.app";
+
+        async function listar() {
+            try {
+                const response = await fetch(URL_PROVEEDORES + "/proveedores/listar");
+                if (!response.ok) throw new Error("Error HTTP: " + response.status);
+                const data = await response.json();
+                const tabla = document.getElementById("tablaProveedores");
+                tabla.innerHTML = "";
+                if (!Array.isArray(data)) return;
+                for (let i = 0; i < data.length; i++) {
+                    const p = data[i];
+                    tabla.innerHTML +=
+                        "<tr>" +
+                        "<td>" + (p.nitProveedor ?? "") + "</td>" +
+                        "<td>" + (p.nombreProveedor ?? "") + "</td>" +
+                        "<td>" + (p.direccionProveedor ?? "") + "</td>" +
+                        "<td>" + (p.telefonoProveedor ?? "") + "</td>" +
+                        "<td>" + (p.ciudadProveedor ?? "") + "</td>" +
+                        "</tr>";
+                }
+            } catch (error) {
+                console.error("Error al listar:", error);
+            }
+        }
+
+        async function guardar() {
+            const proveedor = {
+                nitProveedor: document.getElementById("nit").value,
+                nombreProveedor: document.getElementById("nombreProveedor").value,
+                direccionProveedor: document.getElementById("direccion").value,
+                telefonoProveedor: document.getElementById("telefono").value,
+                ciudadProveedor: document.getElementById("ciudad").value
+            };
+            try {
+                const response = await fetch(URL_PROVEEDORES + "/proveedores/guardar", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(proveedor)
+                });
+                if (!response.ok) throw new Error("Error al guardar: " + response.status);
+                alert("Proveedor guardado correctamente");
+                listar();
+            } catch (error) {
+                console.error("Error al guardar:", error);
+                alert("Error al guardar proveedor");
+            }
+        }
+
+        async function eliminar() {
+            const id = document.getElementById("idEliminar").value;
+            if (!id) { alert("Ingrese el ID"); return; }
+            try {
+                const response = await fetch(URL_PROVEEDORES + "/proveedores/eliminar/" + id, {
+                    method: "DELETE"
+                });
+                if (!response.ok) throw new Error("Error al eliminar");
+                alert("Proveedor eliminado correctamente");
+                listar();
+            } catch (error) {
+                console.error("Error al eliminar:", error);
+                alert("Error al eliminar proveedor");
+            }
+        }
+
+        window.onload = listar;
+    </script>
+</head>
+<body>
+    <h2>Tienda Virtual</h2>
+    <nav>
+        <a href="index.jsp">Inicio</a> |
+        <a href="usuarios.jsp">Usuarios</a> |
+        <a href="clientes.jsp">Clientes</a> |
+        <a href="proveedores.jsp">Proveedores</a> |
+        <a href="productos.jsp">Productos</a> |
+        <a href="ventas.jsp">Ventas</a> |
+        <a href="reportes.jsp">Reportes</a>
+    </nav>
+    <hr/>
+    <h3>Gestión de Proveedores</h3>
+    <table border="1">
+        <tr>
+            <td>NIT:</td>
+            <td><input type="text" id="nit"/></td>
+            <td>Teléfono:</td>
+            <td><input type="text" id="telefono"/></td>
+        </tr>
+        <tr>
+            <td>Nombre Proveedor:</td>
+            <td><input type="text" id="nombreProveedor"/></td>
+            <td>Ciudad:</td>
+            <td><input type="text" id="ciudad"/></td>
+        </tr>
+        <tr>
+            <td>Dirección:</td>
+            <td><input type="text" id="direccion"/></td>
+        </tr>
+        <tr>
+            <td colspan="4">
+                <input type="button" value="Guardar" onclick="guardar()"/>
+            </td>
+        </tr>
+    </table>
+    <hr/>
+    <h3>Eliminar Proveedor</h3>
+    <table>
+        <tr>
+            <td>ID MongoDB:</td>
+            <td><input type="text" id="idEliminar"/></td>
+            <td><input type="button" value="Eliminar" onclick="eliminar()"/></td>
+        </tr>
+    </table>
+    <hr/>
+    <h3>Listado de Proveedores</h3>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>NIT</th>
+                <th>Nombre</th>
+                <th>Dirección</th>
+                <th>Teléfono</th>
+                <th>Ciudad</th>
+            </tr>
+        </thead>
+        <tbody id="tablaProveedores"></tbody>
+    </table>
+</body>
+</html>

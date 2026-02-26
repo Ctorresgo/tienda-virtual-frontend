@@ -1,0 +1,136 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Tienda Virtual - Clientes</title>
+    <script>
+        const URL_CLIENTES = "https://ms-clientes-production.up.railway.app";
+
+        async function listar() {
+            try {
+                const response = await fetch(URL_CLIENTES + "/clientes/listar");
+                if (!response.ok) throw new Error("Error HTTP: " + response.status);
+                const data = await response.json();
+                const tabla = document.getElementById("tablaClientes");
+                tabla.innerHTML = "";
+                if (!Array.isArray(data)) return;
+                for (let i = 0; i < data.length; i++) {
+                    const c = data[i];
+                    tabla.innerHTML +=
+                        "<tr>" +
+                        "<td>" + (c.cedulaCliente ?? "") + "</td>" +
+                        "<td>" + (c.nombreCliente ?? "") + "</td>" +
+                        "<td>" + (c.direccionCliente ?? "") + "</td>" +
+                        "<td>" + (c.telefonoCliente ?? "") + "</td>" +
+                        "<td>" + (c.emailCliente ?? "") + "</td>" +
+                        "</tr>";
+                }
+            } catch (error) {
+                console.error("Error al listar:", error);
+            }
+        }
+
+        async function guardar() {
+            const cliente = {
+                cedulaCliente: document.getElementById("cedula").value,
+                nombreCliente: document.getElementById("nombreCliente").value,
+                direccionCliente: document.getElementById("direccion").value,
+                telefonoCliente: document.getElementById("telefono").value,
+                emailCliente: document.getElementById("emailCliente").value
+            };
+            try {
+                const response = await fetch(URL_CLIENTES + "/clientes/guardar", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(cliente)
+                });
+                if (!response.ok) throw new Error("Error al guardar: " + response.status);
+                alert("Cliente guardado correctamente");
+                listar();
+            } catch (error) {
+                console.error("Error al guardar:", error);
+                alert("Error al guardar cliente");
+            }
+        }
+
+        async function eliminar() {
+            const id = document.getElementById("idEliminar").value;
+            if (!id) { alert("Ingrese el ID"); return; }
+            try {
+                const response = await fetch(URL_CLIENTES + "/clientes/eliminar/" + id, {
+                    method: "DELETE"
+                });
+                if (!response.ok) throw new Error("Error al eliminar");
+                alert("Cliente eliminado correctamente");
+                listar();
+            } catch (error) {
+                console.error("Error al eliminar:", error);
+                alert("Error al eliminar cliente");
+            }
+        }
+
+        window.onload = listar;
+    </script>
+</head>
+<body>
+    <h2>Tienda Virtual</h2>
+    <nav>
+        <a href="index.jsp">Inicio</a> |
+        <a href="usuarios.jsp">Usuarios</a> |
+        <a href="clientes.jsp">Clientes</a> |
+        <a href="proveedores.jsp">Proveedores</a> |
+        <a href="productos.jsp">Productos</a> |
+        <a href="ventas.jsp">Ventas</a> |
+        <a href="reportes.jsp">Reportes</a>
+    </nav>
+    <hr/>
+    <h3>Gestión de Clientes</h3>
+    <table border="1">
+        <tr>
+            <td>Cédula:</td>
+            <td><input type="text" id="cedula"/></td>
+            <td>Teléfono:</td>
+            <td><input type="text" id="telefono"/></td>
+        </tr>
+        <tr>
+            <td>Nombre Completo:</td>
+            <td><input type="text" id="nombreCliente"/></td>
+            <td>Correo Electrónico:</td>
+            <td><input type="text" id="emailCliente"/></td>
+        </tr>
+        <tr>
+            <td>Dirección:</td>
+            <td><input type="text" id="direccion"/></td>
+        </tr>
+        <tr>
+            <td colspan="4">
+                <input type="button" value="Guardar" onclick="guardar()"/>
+            </td>
+        </tr>
+    </table>
+    <hr/>
+    <h3>Eliminar Cliente</h3>
+    <table>
+        <tr>
+            <td>ID MongoDB:</td>
+            <td><input type="text" id="idEliminar"/></td>
+            <td><input type="button" value="Eliminar" onclick="eliminar()"/></td>
+        </tr>
+    </table>
+    <hr/>
+    <h3>Listado de Clientes</h3>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Cédula</th>
+                <th>Nombre</th>
+                <th>Dirección</th>
+                <th>Teléfono</th>
+                <th>Email</th>
+            </tr>
+        </thead>
+        <tbody id="tablaClientes"></tbody>
+    </table>
+</body>
+</html>
