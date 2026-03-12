@@ -3,9 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <title>Tienda Virtual - Clientes</title>
+    <style>
+        input.error { border: 2px solid red; }
+        .msg-error { color: red; font-size: 0.85em; }
+    </style>
     <script>
         const URL_CLIENTES = "https://ms-clientes-production.up.railway.app";
 
+        /* ── Helpers de validación ── */
+        function limpiarErrores() {
+            document.querySelectorAll("input.error").forEach(el => el.classList.remove("error"));
+            document.querySelectorAll(".msg-error").forEach(el => el.textContent = "");
+        }
+
+        function marcarError(id, mensaje) {
+            const input = document.getElementById(id);
+            input.classList.add("error");
+            const span = document.getElementById("err-" + id);
+            if (span) span.textContent = mensaje;
+        }
+
+        function soloNumeros(e) {
+            // Permite: dígitos, Backspace, Delete, Tab, flechas
+            if (!/^\d$/.test(e.key) && !["Backspace","Delete","Tab","ArrowLeft","ArrowRight"].includes(e.key)) {
+                e.preventDefault();
+            }
+        }
+
+        function validarEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        function validarFormulario() {
+            limpiarErrores();
+            let valido = true;
+
+            const campos = [
+                { id: "cedula",        label: "Cédula" },
+                { id: "nombreCliente", label: "Nombre" },
+                { id: "direccion",     label: "Dirección" },
+                { id: "telefono",      label: "Teléfono" },
+                { id: "emailCliente",  label: "Correo electrónico" }
+            ];
+
+            campos.forEach(({ id, label }) => {
+                const val = document.getElementById(id).value.trim();
+                if (!val) {
+                    marcarError(id, label + " es obligatorio.");
+                    valido = false;
+                }
+            });
+
+            // Validación extra: cédula solo números
+            const cedula = document.getElementById("cedula").value.trim();
+            if (cedula && !/^\d+$/.test(cedula)) {
+                marcarError("cedula", "La cédula debe contener solo números.");
+                valido = false;
+            }
+
+            // Validación extra: teléfono solo números
+            const telefono = document.getElementById("telefono").value.trim();
+            if (telefono && !/^\d+$/.test(telefono)) {
+                marcarError("telefono", "El teléfono debe contener solo números.");
+                valido = false;
+            }
+
+            // Validación extra: formato email
+            const email = document.getElementById("emailCliente").value.trim();
+            if (email && !validarEmail(email)) {
+                marcarError("emailCliente", "Ingrese un correo electrónico válido.");
+                valido = false;
+            }
+
+            return valido;
+        }
+
+        function limpiarFormulario() {
+            ["cedula","nombreCliente","direccion","telefono","emailCliente"].forEach(id => {
+                document.getElementById(id).value = "";
+            });
+            limpiarErrores();
+        }
+
+        /* ── API calls ── */
         async function listar() {
             try {
                 const response = await fetch(URL_CLIENTES + "/clientes/listar");
@@ -31,12 +111,14 @@
         }
 
         async function guardar() {
+            if (!validarFormulario()) return;
+
             const cliente = {
-                cedulaCliente: document.getElementById("cedula").value,
-                nombreCliente: document.getElementById("nombreCliente").value,
-                direccionCliente: document.getElementById("direccion").value,
-                telefonoCliente: document.getElementById("telefono").value,
-                emailCliente: document.getElementById("emailCliente").value
+                cedulaCliente:    document.getElementById("cedula").value.trim(),
+                nombreCliente:    document.getElementById("nombreCliente").value.trim(),
+                direccionCliente: document.getElementById("direccion").value.trim(),
+                telefonoCliente:  document.getElementById("telefono").value.trim(),
+                emailCliente:     document.getElementById("emailCliente").value.trim()
             };
             try {
                 const response = await fetch(URL_CLIENTES + "/clientes/guardar", {
@@ -46,6 +128,7 @@
                 });
                 if (!response.ok) throw new Error("Error al guardar: " + response.status);
                 alert("Cliente guardado correctamente");
+                limpiarFormulario();
                 listar();
             } catch (error) {
                 console.error("Error al guardar:", error);
@@ -54,14 +137,16 @@
         }
 
         async function eliminar() {
-            const id = document.getElementById("idEliminar").value;
+            const id = document.getElementById("idEliminar").value.trim();
             if (!id) { alert("Ingrese el ID"); return; }
+            if (!confirm("¿Está seguro de que desea eliminar este cliente?")) return;
             try {
                 const response = await fetch(URL_CLIENTES + "/clientes/eliminar/" + id, {
                     method: "DELETE"
                 });
                 if (!response.ok) throw new Error("Error al eliminar");
                 alert("Cliente eliminado correctamente");
+                document.getElementById("idEliminar").value = "";
                 listar();
             } catch (error) {
                 console.error("Error al eliminar:", error);
@@ -88,23 +173,39 @@
     <table border="1">
         <tr>
             <td>Cédula:</td>
-            <td><input type="text" id="cedula"/></td>
+            <td>
+                <input type="text" id="cedula" onkeydown="soloNumeros(event)"/>
+                <span class="msg-error" id="err-cedula"></span>
+            </td>
             <td>Teléfono:</td>
-            <td><input type="text" id="telefono"/></td>
+            <td>
+                <input type="text" id="telefono" onkeydown="soloNumeros(event)"/>
+                <span class="msg-error" id="err-telefono"></span>
+            </td>
         </tr>
         <tr>
             <td>Nombre Completo:</td>
-            <td><input type="text" id="nombreCliente"/></td>
+            <td>
+                <input type="text" id="nombreCliente"/>
+                <span class="msg-error" id="err-nombreCliente"></span>
+            </td>
             <td>Correo Electrónico:</td>
-            <td><input type="text" id="emailCliente"/></td>
+            <td>
+                <input type="text" id="emailCliente"/>
+                <span class="msg-error" id="err-emailCliente"></span>
+            </td>
         </tr>
         <tr>
             <td>Dirección:</td>
-            <td><input type="text" id="direccion"/></td>
+            <td>
+                <input type="text" id="direccion"/>
+                <span class="msg-error" id="err-direccion"></span>
+            </td>
         </tr>
         <tr>
             <td colspan="4">
                 <input type="button" value="Guardar" onclick="guardar()"/>
+                <input type="button" value="Limpiar" onclick="limpiarFormulario()"/>
             </td>
         </tr>
     </table>
@@ -132,5 +233,5 @@
         <tbody id="tablaClientes"></tbody>
     </table>
 </body>
-
 </html>
+
