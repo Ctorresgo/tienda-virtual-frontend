@@ -3,22 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <title>Tienda Virtual - Ventas</title>
+    <style>
+        input.error { border: 2px solid red; }
+        .msg-error { color: red; font-size: 0.85em; }
+    </style>
     <script>
         const URL_VENTAS = "https://ms-ventas-production-0b54.up.railway.app";
 
+        /* ── Helpers de validación ── */
+        function limpiarErrores() {
+            document.querySelectorAll("input.error").forEach(el => el.classList.remove("error"));
+            document.querySelectorAll(".msg-error").forEach(el => el.textContent = "");
+        }
+
+        function marcarError(id, mensaje) {
+            const input = document.getElementById(id);
+            input.classList.add("error");
+            const span = document.getElementById("err-" + id);
+            if (span) span.textContent = mensaje;
+        }
+
+        function soloNumeros(e) {
+            if (!/^\d$/.test(e.key) && !["Backspace","Delete","Tab","ArrowLeft","ArrowRight"].includes(e.key)) {
+                e.preventDefault();
+            }
+        }
+
+        function soloDecimales(e) {
+            const input = e.target;
+            if (e.key === "." && input.value.includes(".")) { e.preventDefault(); return; }
+            if (!/^\d$/.test(e.key) && e.key !== "." && !["Backspace","Delete","Tab","ArrowLeft","ArrowRight"].includes(e.key)) {
+                e.preventDefault();
+            }
+        }
+
+        function validarFormulario() {
+            limpiarErrores();
+            let valido = true;
+
+            const campos = [
+                { id: "codigoVenta",   label: "Código Venta" },
+                { id: "cedulaCliente", label: "Cédula Cliente" },
+                { id: "cedulaUsuario", label: "Cédula Usuario" },
+                { id: "valorVenta",    label: "Valor Venta" },
+                { id: "ivaVenta",      label: "IVA Venta" },
+                { id: "totalVenta",    label: "Total Venta" }
+            ];
+
+            campos.forEach(({ id, label }) => {
+                const val = document.getElementById(id).value.trim();
+                if (!val) {
+                    marcarError(id, label + " es obligatorio.");
+                    valido = false;
+                }
+            });
+
+            // Cédulas solo números
+            ["cedulaCliente", "cedulaUsuario"].forEach(id => {
+                const val = document.getElementById(id).value.trim();
+                if (val && !/^\d+$/.test(val)) {
+                    marcarError(id, "Debe contener solo números.");
+                    valido = false;
+                }
+            });
+
+            // Valores numéricos positivos
+            ["valorVenta", "ivaVenta", "totalVenta"].forEach(id => {
+                const val = document.getElementById(id).value.trim();
+                if (val && (isNaN(val) || Number(val) < 0)) {
+                    marcarError(id, "Debe ser un número positivo.");
+                    valido = false;
+                }
+            });
+
+            return valido;
+        }
+
+        function limpiarFormulario() {
+            ["codigoVenta","cedulaCliente","cedulaUsuario","valorVenta","ivaVenta","totalVenta"].forEach(id => {
+                document.getElementById(id).value = "";
+            });
+            limpiarErrores();
+        }
+
+        /* ── API calls ── */
         async function listar() {
-            console.log("Listando ventas...");
             try {
                 const response = await fetch(URL_VENTAS + "/ventas/listar");
                 if (!response.ok) throw new Error("Error HTTP: " + response.status);
                 const data = await response.json();
-                console.log("Ventas recibidas:", data);
                 const tabla = document.getElementById("tablaVentas");
                 tabla.innerHTML = "";
-                if (!Array.isArray(data)) {
-                    console.error("La respuesta no es un array:", data);
-                    return;
-                }
+                if (!Array.isArray(data)) return;
                 for (let i = 0; i < data.length; i++) {
                     const v = data[i];
                     tabla.innerHTML += "<tr>" +
@@ -36,13 +112,15 @@
         }
 
         async function guardar() {
+            if (!validarFormulario()) return;
+
             const venta = {
-                codigoVenta: document.getElementById("codigoVenta").value,
-                cedulaCliente: document.getElementById("cedulaCliente").value,
-                cedulaUsuario: document.getElementById("cedulaUsuario").value,
-                valorVenta: document.getElementById("valorVenta").value,
-                ivaVenta: document.getElementById("ivaVenta").value,
-                totalVenta: document.getElementById("totalVenta").value
+                codigoVenta:   document.getElementById("codigoVenta").value.trim(),
+                cedulaCliente: document.getElementById("cedulaCliente").value.trim(),
+                cedulaUsuario: document.getElementById("cedulaUsuario").value.trim(),
+                valorVenta:    document.getElementById("valorVenta").value.trim(),
+                ivaVenta:      document.getElementById("ivaVenta").value.trim(),
+                totalVenta:    document.getElementById("totalVenta").value.trim()
             };
             try {
                 const response = await fetch(URL_VENTAS + "/ventas/guardar", {
@@ -52,6 +130,7 @@
                 });
                 if (!response.ok) throw new Error("Error al guardar: " + response.status);
                 alert("Venta guardada correctamente");
+                limpiarFormulario();
                 listar();
             } catch (error) {
                 console.error("Error al guardar:", error);
@@ -60,14 +139,16 @@
         }
 
         async function eliminar() {
-            const id = document.getElementById("idEliminar").value;
+            const id = document.getElementById("idEliminar").value.trim();
             if (!id) { alert("Ingrese el ID"); return; }
+            if (!confirm("¿Está seguro de que desea eliminar esta venta?")) return;
             try {
                 const response = await fetch(URL_VENTAS + "/ventas/eliminar/" + id, {
                     method: "DELETE"
                 });
                 if (!response.ok) throw new Error("Error al eliminar");
                 alert("Venta eliminada correctamente");
+                document.getElementById("idEliminar").value = "";
                 listar();
             } catch (error) {
                 console.error("Error al eliminar:", error);
@@ -94,25 +175,44 @@
     <table border="1">
         <tr>
             <td>Código Venta:</td>
-            <td><input type="text" id="codigoVenta"/></td>
+            <td>
+                <input type="text" id="codigoVenta"/>
+                <span class="msg-error" id="err-codigoVenta"></span>
+            </td>
             <td>Cédula Cliente:</td>
-            <td><input type="text" id="cedulaCliente"/></td>
+            <td>
+                <input type="text" id="cedulaCliente" onkeydown="soloNumeros(event)"/>
+                <span class="msg-error" id="err-cedulaCliente"></span>
+            </td>
         </tr>
         <tr>
             <td>Cédula Usuario:</td>
-            <td><input type="text" id="cedulaUsuario"/></td>
+            <td>
+                <input type="text" id="cedulaUsuario" onkeydown="soloNumeros(event)"/>
+                <span class="msg-error" id="err-cedulaUsuario"></span>
+            </td>
             <td>Valor Venta:</td>
-            <td><input type="text" id="valorVenta"/></td>
+            <td>
+                <input type="text" id="valorVenta" onkeydown="soloDecimales(event)"/>
+                <span class="msg-error" id="err-valorVenta"></span>
+            </td>
         </tr>
         <tr>
-            <td>IVA Venta:</td>
-            <td><input type="text" id="ivaVenta"/></td>
+            <td>IVA Venta (%):</td>
+            <td>
+                <input type="text" id="ivaVenta" onkeydown="soloDecimales(event)"/>
+                <span class="msg-error" id="err-ivaVenta"></span>
+            </td>
             <td>Total Venta:</td>
-            <td><input type="text" id="totalVenta"/></td>
+            <td>
+                <input type="text" id="totalVenta" onkeydown="soloDecimales(event)"/>
+                <span class="msg-error" id="err-totalVenta"></span>
+            </td>
         </tr>
         <tr>
             <td colspan="4">
                 <input type="button" value="Guardar" onclick="guardar()"/>
+                <input type="button" value="Limpiar" onclick="limpiarFormulario()"/>
             </td>
         </tr>
     </table>
@@ -141,5 +241,5 @@
         <tbody id="tablaVentas"></tbody>
     </table>
 </body>
-
 </html>
+
