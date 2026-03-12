@@ -3,148 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <title>Tienda Virtual - Usuarios</title>
-
+    <style>
+        input.error { border: 2px solid red; }
+        .msg-error { color: red; font-size: 0.85em; }
+    </style>
     <script>
-
         const URL_USUARIOS = "https://ms-usuarios-production-3f9e.up.railway.app";
 
-        // LISTAR USUARIOS
+        /* ── Helpers de validación ── */
+        function limpiarErrores() {
+            document.querySelectorAll("input.error").forEach(el => el.classList.remove("error"));
+            document.querySelectorAll(".msg-error").forEach(el => el.textContent = "");
+        }
+
+        function marcarError(id, mensaje) {
+            const input = document.getElementById(id);
+            input.classList.add("error");
+            const span = document.getElementById("err-" + id);
+            if (span) span.textContent = mensaje;
+        }
+
+        function soloNumeros(e) {
+            if (!/^\d$/.test(e.key) && !["Backspace","Delete","Tab","ArrowLeft","ArrowRight"].includes(e.key)) {
+                e.preventDefault();
+            }
+        }
+
+        function validarEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        function validarFormulario() {
+            limpiarErrores();
+            let valido = true;
+
+            const campos = [
+                { id: "cedula",       label: "Cédula" },
+                { id: "nombreUsuario",label: "Nombre Completo" },
+                { id: "emailUsuario", label: "Correo Electrónico" },
+                { id: "usuario",      label: "Usuario" },
+                { id: "password",     label: "Contraseña" }
+            ];
+
+            campos.forEach(({ id, label }) => {
+                const val = document.getElementById(id).value.trim();
+                if (!val) {
+                    marcarError(id, label + " es obligatorio.");
+                    valido = false;
+                }
+            });
+
+            // Cédula solo números
+            const cedula = document.getElementById("cedula").value.trim();
+            if (cedula && !/^\d+$/.test(cedula)) {
+                marcarError("cedula", "La cédula debe contener solo números.");
+                valido = false;
+            }
+
+            // Formato email
+            const email = document.getElementById("emailUsuario").value.trim();
+            if (email && !validarEmail(email)) {
+                marcarError("emailUsuario", "Ingrese un correo electrónico válido.");
+                valido = false;
+            }
+
+            // Contraseña mínimo 6 caracteres
+            const password = document.getElementById("password").value;
+            if (password && password.length < 6) {
+                marcarError("password", "La contraseña debe tener al menos 6 caracteres.");
+                valido = false;
+            }
+
+            return valido;
+        }
+
+        function limpiarFormulario() {
+            ["cedula","nombreUsuario","emailUsuario","usuario","password"].forEach(id => {
+                document.getElementById(id).value = "";
+            });
+            limpiarErrores();
+        }
+
+        /* ── API calls ── */
         async function listar() {
-
-            console.log("Listando usuarios...");
-
             try {
-
                 const response = await fetch(URL_USUARIOS + "/usuarios/listar");
-
-                if (!response.ok) {
-                    throw new Error("Error HTTP: " + response.status);
-                }
-
+                if (!response.ok) throw new Error("Error HTTP: " + response.status);
                 const data = await response.json();
-
-                console.log("Usuarios recibidos:", data);
-
                 const tabla = document.getElementById("tablaUsuarios");
-
                 tabla.innerHTML = "";
-
-                if (!Array.isArray(data)) {
-                    console.error("La respuesta no es un array:", data);
-                    return;
-                }
-
+                if (!Array.isArray(data)) return;
                 for (let i = 0; i < data.length; i++) {
-
                     const u = data[i];
-
-                    const fila =
+                    tabla.innerHTML +=
                         "<tr>" +
                         "<td>" + (u.cedulaUsuario ?? "") + "</td>" +
                         "<td>" + (u.nombreUsuario ?? "") + "</td>" +
                         "<td>" + (u.emailUsuario ?? "") + "</td>" +
                         "<td>" + (u.usuario ?? "") + "</td>" +
                         "</tr>";
-
-                    tabla.innerHTML += fila;
                 }
-
             } catch (error) {
-
                 console.error("Error al listar:", error);
-
             }
         }
 
-
-        // GUARDAR USUARIO
         async function guardar() {
+            if (!validarFormulario()) return;
 
             const usuario = {
-
-                cedulaUsuario: document.getElementById("cedula").value,
-                nombreUsuario: document.getElementById("nombreUsuario").value,
-                emailUsuario: document.getElementById("emailUsuario").value,
-                usuario: document.getElementById("usuario").value,
-                password: document.getElementById("password").value
-
+                cedulaUsuario: document.getElementById("cedula").value.trim(),
+                nombreUsuario: document.getElementById("nombreUsuario").value.trim(),
+                emailUsuario:  document.getElementById("emailUsuario").value.trim(),
+                usuario:       document.getElementById("usuario").value.trim(),
+                password:      document.getElementById("password").value
             };
-
             try {
-
                 const response = await fetch(URL_USUARIOS + "/usuarios/guardar", {
-
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(usuario)
-
                 });
-
-                if (!response.ok) {
-                    throw new Error("Error al guardar: " + response.status);
-                }
-
+                if (!response.ok) throw new Error("Error al guardar: " + response.status);
                 alert("Usuario guardado correctamente");
-
+                limpiarFormulario();
                 listar();
-
             } catch (error) {
-
                 console.error("Error al guardar:", error);
                 alert("Error al guardar usuario");
-
             }
         }
 
-
-        // ELIMINAR USUARIO
         async function eliminar() {
-
-            const id = document.getElementById("idEliminar").value;
-
-            if (!id) {
-                alert("Ingrese el ID");
-                return;
-            }
-
+            const id = document.getElementById("idEliminar").value.trim();
+            if (!id) { alert("Ingrese el ID"); return; }
+            if (!confirm("¿Está seguro de que desea eliminar este usuario?")) return;
             try {
-
                 const response = await fetch(URL_USUARIOS + "/usuarios/eliminar/" + id, {
-
                     method: "DELETE"
-
                 });
-
-                if (!response.ok) {
-                    throw new Error("Error al eliminar");
-                }
-
+                if (!response.ok) throw new Error("Error al eliminar");
                 alert("Usuario eliminado correctamente");
-
+                document.getElementById("idEliminar").value = "";
                 listar();
-
             } catch (error) {
-
                 console.error("Error al eliminar:", error);
                 alert("Error al eliminar usuario");
-
             }
         }
 
-
-        // CARGAR AL INICIAR
         window.onload = listar;
-
     </script>
-
 </head>
-
 <body>
-
     <h2>Tienda Virtual</h2>
-
     <nav>
         <a href="index.html">Inicio</a> |
         <a href="usuarios.html">Usuarios</a> |
@@ -154,65 +166,59 @@
         <a href="ventas.html">Ventas</a> |
         <a href="reportes.html">Reportes</a>
     </nav>
-
     <hr/>
-
     <h3>Gestión de Usuarios</h3>
-
     <table border="1">
-
         <tr>
             <td>Cédula:</td>
-            <td><input type="text" id="cedula"/></td>
-
+            <td>
+                <input type="text" id="cedula" onkeydown="soloNumeros(event)"/>
+                <span class="msg-error" id="err-cedula"></span>
+            </td>
             <td>Usuario:</td>
-            <td><input type="text" id="usuario"/></td>
+            <td>
+                <input type="text" id="usuario"/>
+                <span class="msg-error" id="err-usuario"></span>
+            </td>
         </tr>
-
         <tr>
             <td>Nombre Completo:</td>
-            <td><input type="text" id="nombreUsuario"/></td>
-
+            <td>
+                <input type="text" id="nombreUsuario"/>
+                <span class="msg-error" id="err-nombreUsuario"></span>
+            </td>
             <td>Contraseña:</td>
-            <td><input type="password" id="password"/></td>
+            <td>
+                <input type="password" id="password"/>
+                <span class="msg-error" id="err-password"></span>
+            </td>
         </tr>
-
         <tr>
             <td>Correo Electrónico:</td>
-            <td><input type="text" id="emailUsuario"/></td>
+            <td>
+                <input type="text" id="emailUsuario"/>
+                <span class="msg-error" id="err-emailUsuario"></span>
+            </td>
         </tr>
-
         <tr>
             <td colspan="4">
                 <input type="button" value="Guardar" onclick="guardar()"/>
+                <input type="button" value="Limpiar" onclick="limpiarFormulario()"/>
             </td>
         </tr>
-
     </table>
-
     <hr/>
-
     <h3>Eliminar Usuario</h3>
-
     <table>
-
         <tr>
             <td>ID MongoDB:</td>
             <td><input type="text" id="idEliminar"/></td>
-
-            <td>
-                <input type="button" value="Eliminar" onclick="eliminar()"/>
-            </td>
+            <td><input type="button" value="Eliminar" onclick="eliminar()"/></td>
         </tr>
-
     </table>
-
     <hr/>
-
     <h3>Listado de Usuarios</h3>
-
     <table border="1">
-
         <thead>
             <tr>
                 <th>Cédula</th>
@@ -221,14 +227,7 @@
                 <th>Usuario</th>
             </tr>
         </thead>
-
-        <tbody id="tablaUsuarios">
-        </tbody>
-
+        <tbody id="tablaUsuarios"></tbody>
     </table>
-
 </body>
-
-
 </html>
-
