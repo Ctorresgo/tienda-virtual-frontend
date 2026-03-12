@@ -3,22 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <title>Tienda Virtual - Productos</title>
+    <style>
+        input.error { border: 2px solid red; }
+        .msg-error { color: red; font-size: 0.85em; }
+    </style>
     <script>
         const URL_PRODUCTOS = "https://ms-productos-production.up.railway.app";
 
+        /* ── Helpers de validación ── */
+        function limpiarErrores() {
+            document.querySelectorAll("input.error").forEach(el => el.classList.remove("error"));
+            document.querySelectorAll(".msg-error").forEach(el => el.textContent = "");
+        }
+
+        function marcarError(id, mensaje) {
+            const input = document.getElementById(id);
+            input.classList.add("error");
+            const span = document.getElementById("err-" + id);
+            if (span) span.textContent = mensaje;
+        }
+
+        function soloNumeros(e) {
+            if (!/^\d$/.test(e.key) && !["Backspace","Delete","Tab","ArrowLeft","ArrowRight"].includes(e.key)) {
+                e.preventDefault();
+            }
+        }
+
+        function soloDecimales(e) {
+            // Permite dígitos y un único punto decimal
+            const input = e.target;
+            if (e.key === "." && input.value.includes(".")) { e.preventDefault(); return; }
+            if (!/^\d$/.test(e.key) && e.key !== "." && !["Backspace","Delete","Tab","ArrowLeft","ArrowRight"].includes(e.key)) {
+                e.preventDefault();
+            }
+        }
+
+        function validarFormulario() {
+            limpiarErrores();
+            let valido = true;
+
+            const campos = [
+                { id: "codigo",         label: "Código" },
+                { id: "nombreProducto", label: "Nombre Producto" },
+                { id: "nit",            label: "NIT Proveedor" },
+                { id: "precioCompra",   label: "Precio Compra" },
+                { id: "ivaCompra",      label: "IVA Compra" },
+                { id: "precioVenta",    label: "Precio Venta" }
+            ];
+
+            campos.forEach(({ id, label }) => {
+                const val = document.getElementById(id).value.trim();
+                if (!val) {
+                    marcarError(id, label + " es obligatorio.");
+                    valido = false;
+                }
+            });
+
+            // NIT solo números
+            const nit = document.getElementById("nit").value.trim();
+            if (nit && !/^\d+$/.test(nit)) {
+                marcarError("nit", "El NIT debe contener solo números.");
+                valido = false;
+            }
+
+            // Precios e IVA deben ser números positivos
+            ["precioCompra", "ivaCompra", "precioVenta"].forEach(id => {
+                const val = document.getElementById(id).value.trim();
+                if (val && (isNaN(val) || Number(val) < 0)) {
+                    marcarError(id, "Debe ser un número positivo.");
+                    valido = false;
+                }
+            });
+
+            return valido;
+        }
+
+        function limpiarFormulario() {
+            ["codigo","nombreProducto","nit","precioCompra","ivaCompra","precioVenta"].forEach(id => {
+                document.getElementById(id).value = "";
+            });
+            limpiarErrores();
+        }
+
+        /* ── API calls ── */
         async function listar() {
-            console.log("Listando productos...");
             try {
                 const response = await fetch(URL_PRODUCTOS + "/productos/listar");
                 if (!response.ok) throw new Error("Error HTTP: " + response.status);
                 const data = await response.json();
-                console.log("Productos recibidos:", data);
                 const tabla = document.getElementById("tablaProductos");
                 tabla.innerHTML = "";
-                if (!Array.isArray(data)) {
-                    console.error("La respuesta no es un array:", data);
-                    return;
-                }
+                if (!Array.isArray(data)) return;
                 for (let i = 0; i < data.length; i++) {
                     const p = data[i];
                     tabla.innerHTML += "<tr>" +
@@ -36,13 +111,15 @@
         }
 
         async function guardar() {
+            if (!validarFormulario()) return;
+
             const producto = {
-                codigoProducto: document.getElementById("codigo").value,
-                nombreProducto: document.getElementById("nombreProducto").value,
-                nitProveedor: document.getElementById("nit").value,
-                precioCompra: document.getElementById("precioCompra").value,
-                ivaCompra: document.getElementById("ivaCompra").value,
-                precioVenta: document.getElementById("precioVenta").value
+                codigoProducto: document.getElementById("codigo").value.trim(),
+                nombreProducto: document.getElementById("nombreProducto").value.trim(),
+                nitProveedor:   document.getElementById("nit").value.trim(),
+                precioCompra:   document.getElementById("precioCompra").value.trim(),
+                ivaCompra:      document.getElementById("ivaCompra").value.trim(),
+                precioVenta:    document.getElementById("precioVenta").value.trim()
             };
             try {
                 const response = await fetch(URL_PRODUCTOS + "/productos/guardar", {
@@ -52,6 +129,7 @@
                 });
                 if (!response.ok) throw new Error("Error al guardar: " + response.status);
                 alert("Producto guardado correctamente");
+                limpiarFormulario();
                 listar();
             } catch (error) {
                 console.error("Error al guardar:", error);
@@ -60,14 +138,16 @@
         }
 
         async function eliminar() {
-            const id = document.getElementById("idEliminar").value;
+            const id = document.getElementById("idEliminar").value.trim();
             if (!id) { alert("Ingrese el ID"); return; }
+            if (!confirm("¿Está seguro de que desea eliminar este producto?")) return;
             try {
                 const response = await fetch(URL_PRODUCTOS + "/productos/eliminar/" + id, {
                     method: "DELETE"
                 });
                 if (!response.ok) throw new Error("Error al eliminar");
                 alert("Producto eliminado correctamente");
+                document.getElementById("idEliminar").value = "";
                 listar();
             } catch (error) {
                 console.error("Error al eliminar:", error);
@@ -94,25 +174,44 @@
     <table border="1">
         <tr>
             <td>Código:</td>
-            <td><input type="text" id="codigo"/></td>
+            <td>
+                <input type="text" id="codigo"/>
+                <span class="msg-error" id="err-codigo"></span>
+            </td>
             <td>NIT Proveedor:</td>
-            <td><input type="text" id="nit"/></td>
+            <td>
+                <input type="text" id="nit" onkeydown="soloNumeros(event)"/>
+                <span class="msg-error" id="err-nit"></span>
+            </td>
         </tr>
         <tr>
             <td>Nombre Producto:</td>
-            <td><input type="text" id="nombreProducto"/></td>
-            <td>IVA Compra:</td>
-            <td><input type="text" id="ivaCompra"/></td>
+            <td>
+                <input type="text" id="nombreProducto"/>
+                <span class="msg-error" id="err-nombreProducto"></span>
+            </td>
+            <td>IVA Compra (%):</td>
+            <td>
+                <input type="text" id="ivaCompra" onkeydown="soloDecimales(event)"/>
+                <span class="msg-error" id="err-ivaCompra"></span>
+            </td>
         </tr>
         <tr>
             <td>Precio Compra:</td>
-            <td><input type="text" id="precioCompra"/></td>
+            <td>
+                <input type="text" id="precioCompra" onkeydown="soloDecimales(event)"/>
+                <span class="msg-error" id="err-precioCompra"></span>
+            </td>
             <td>Precio Venta:</td>
-            <td><input type="text" id="precioVenta"/></td>
+            <td>
+                <input type="text" id="precioVenta" onkeydown="soloDecimales(event)"/>
+                <span class="msg-error" id="err-precioVenta"></span>
+            </td>
         </tr>
         <tr>
             <td colspan="4">
                 <input type="button" value="Guardar" onclick="guardar()"/>
+                <input type="button" value="Limpiar" onclick="limpiarFormulario()"/>
             </td>
         </tr>
     </table>
@@ -141,5 +240,5 @@
         <tbody id="tablaProductos"></tbody>
     </table>
 </body>
-
 </html>
+
