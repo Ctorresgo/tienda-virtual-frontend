@@ -3,9 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <title>Tienda Virtual - Proveedores</title>
+    <style>
+        input.error { border: 2px solid red; }
+        .msg-error { color: red; font-size: 0.85em; }
+    </style>
     <script>
         const URL_PROVEEDORES = "https://ms-proveedores-production.up.railway.app";
 
+        /* ── Helpers de validación ── */
+        function limpiarErrores() {
+            document.querySelectorAll("input.error").forEach(el => el.classList.remove("error"));
+            document.querySelectorAll(".msg-error").forEach(el => el.textContent = "");
+        }
+
+        function marcarError(id, mensaje) {
+            const input = document.getElementById(id);
+            input.classList.add("error");
+            const span = document.getElementById("err-" + id);
+            if (span) span.textContent = mensaje;
+        }
+
+        function soloNumeros(e) {
+            if (!/^\d$/.test(e.key) && !["Backspace","Delete","Tab","ArrowLeft","ArrowRight"].includes(e.key)) {
+                e.preventDefault();
+            }
+        }
+
+        function validarFormulario() {
+            limpiarErrores();
+            let valido = true;
+
+            const campos = [
+                { id: "nit",             label: "NIT" },
+                { id: "nombreProveedor", label: "Nombre Proveedor" },
+                { id: "direccion",       label: "Dirección" },
+                { id: "telefono",        label: "Teléfono" },
+                { id: "ciudad",          label: "Ciudad" }
+            ];
+
+            campos.forEach(({ id, label }) => {
+                const val = document.getElementById(id).value.trim();
+                if (!val) {
+                    marcarError(id, label + " es obligatorio.");
+                    valido = false;
+                }
+            });
+
+            // NIT solo números
+            const nit = document.getElementById("nit").value.trim();
+            if (nit && !/^\d+$/.test(nit)) {
+                marcarError("nit", "El NIT debe contener solo números.");
+                valido = false;
+            }
+
+            // Teléfono solo números
+            const telefono = document.getElementById("telefono").value.trim();
+            if (telefono && !/^\d+$/.test(telefono)) {
+                marcarError("telefono", "El teléfono debe contener solo números.");
+                valido = false;
+            }
+
+            return valido;
+        }
+
+        function limpiarFormulario() {
+            ["nit","nombreProveedor","direccion","telefono","ciudad"].forEach(id => {
+                document.getElementById(id).value = "";
+            });
+            limpiarErrores();
+        }
+
+        /* ── API calls ── */
         async function listar() {
             try {
                 const response = await fetch(URL_PROVEEDORES + "/proveedores/listar");
@@ -31,12 +99,14 @@
         }
 
         async function guardar() {
+            if (!validarFormulario()) return;
+
             const proveedor = {
-                nitProveedor: document.getElementById("nit").value,
-                nombreProveedor: document.getElementById("nombreProveedor").value,
-                direccionProveedor: document.getElementById("direccion").value,
-                telefonoProveedor: document.getElementById("telefono").value,
-                ciudadProveedor: document.getElementById("ciudad").value
+                nitProveedor:       document.getElementById("nit").value.trim(),
+                nombreProveedor:    document.getElementById("nombreProveedor").value.trim(),
+                direccionProveedor: document.getElementById("direccion").value.trim(),
+                telefonoProveedor:  document.getElementById("telefono").value.trim(),
+                ciudadProveedor:    document.getElementById("ciudad").value.trim()
             };
             try {
                 const response = await fetch(URL_PROVEEDORES + "/proveedores/guardar", {
@@ -46,6 +116,7 @@
                 });
                 if (!response.ok) throw new Error("Error al guardar: " + response.status);
                 alert("Proveedor guardado correctamente");
+                limpiarFormulario();
                 listar();
             } catch (error) {
                 console.error("Error al guardar:", error);
@@ -54,14 +125,16 @@
         }
 
         async function eliminar() {
-            const id = document.getElementById("idEliminar").value;
+            const id = document.getElementById("idEliminar").value.trim();
             if (!id) { alert("Ingrese el ID"); return; }
+            if (!confirm("¿Está seguro de que desea eliminar este proveedor?")) return;
             try {
                 const response = await fetch(URL_PROVEEDORES + "/proveedores/eliminar/" + id, {
                     method: "DELETE"
                 });
                 if (!response.ok) throw new Error("Error al eliminar");
                 alert("Proveedor eliminado correctamente");
+                document.getElementById("idEliminar").value = "";
                 listar();
             } catch (error) {
                 console.error("Error al eliminar:", error);
@@ -88,23 +161,39 @@
     <table border="1">
         <tr>
             <td>NIT:</td>
-            <td><input type="text" id="nit"/></td>
+            <td>
+                <input type="text" id="nit" onkeydown="soloNumeros(event)"/>
+                <span class="msg-error" id="err-nit"></span>
+            </td>
             <td>Teléfono:</td>
-            <td><input type="text" id="telefono"/></td>
+            <td>
+                <input type="text" id="telefono" onkeydown="soloNumeros(event)"/>
+                <span class="msg-error" id="err-telefono"></span>
+            </td>
         </tr>
         <tr>
             <td>Nombre Proveedor:</td>
-            <td><input type="text" id="nombreProveedor"/></td>
+            <td>
+                <input type="text" id="nombreProveedor"/>
+                <span class="msg-error" id="err-nombreProveedor"></span>
+            </td>
             <td>Ciudad:</td>
-            <td><input type="text" id="ciudad"/></td>
+            <td>
+                <input type="text" id="ciudad"/>
+                <span class="msg-error" id="err-ciudad"></span>
+            </td>
         </tr>
         <tr>
             <td>Dirección:</td>
-            <td><input type="text" id="direccion"/></td>
+            <td>
+                <input type="text" id="direccion"/>
+                <span class="msg-error" id="err-direccion"></span>
+            </td>
         </tr>
         <tr>
             <td colspan="4">
                 <input type="button" value="Guardar" onclick="guardar()"/>
+                <input type="button" value="Limpiar" onclick="limpiarFormulario()"/>
             </td>
         </tr>
     </table>
@@ -132,5 +221,4 @@
         <tbody id="tablaProveedores"></tbody>
     </table>
 </body>
-
 </html>
